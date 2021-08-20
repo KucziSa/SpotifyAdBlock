@@ -1,1 +1,1 @@
-# SpotifyAdBlock
+# SpotifyAdBlock Chrome extension
