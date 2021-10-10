@@ -1,4 +1,4 @@
-<h1 text align = "center">🎵 Klahoot Soptify-AdBlocker [UpToDate] 🎵</h1> 
+<h1 text align = "center">🎵 Soptify-AdBlocker [UpToDate] 🎵</h1> 
 
 <p text align = "center">⚠️ This version of extension is *UpToDate*⚠️ </p>
 <p text align = "center"> It's the newest version/ </p>
