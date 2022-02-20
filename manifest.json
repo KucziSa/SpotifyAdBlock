@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 2.1,
   "name": "Spotify Ad Remover",
    "description": "Removes audio ads on Spotify™ Web Player. It also disables 'premium' button.",
   "version": "1.2",
