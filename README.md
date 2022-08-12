@@ -15,4 +15,4 @@
 
 <p text align = "center">🍏 As simple as that 😆 </p>
 
-<h6 text align = "right">Hipolit Płatek</h6>
+<h6 text align = "right">Kuczi$</h6>
