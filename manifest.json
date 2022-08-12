@@ -32,7 +32,7 @@
     {
       "matches": ["https://open.spotify.com/*"],
       "js": ["scripts/sweetalert.min.js"],
-      "css": ["css/snackbar.css", "css/buttonsRemoval.css"]
+      "css": ["css/snackBar.css", "css/buttonsRemoval.css"]
     }
    ],
 	"web_accessible_resources": [ "scripts/*"]
