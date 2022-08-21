@@ -1,6 +1,6 @@
-<h1 text align = "center">🎵 Soptify-AdBlocker [UpToDate] 🎵</h1> 
+<h1 text align = "center">🎵 Soptify-AdBlocker [OutDated] 🎵</h1> 
 
-<p text align = "center">⚠️ This version of extension is *UpToDate*⚠️ </p>
+<p text align = "center">⚠️ This version of extension is *OutDated*⚠️ </p>
 <p text align = "center"> It's the newest version/ </p>
 
 <h1 text align = "center">Klahoot is the best, most reliable and FREE service getting rid of annoying Spotify Ads.</h1>
