@@ -1,4 +1,4 @@
-﻿// this is the background page!
+// this is the background page!
 chrome.runtime.onMessage.addListener(onMessage);
 
 function onMessage(messageEvent, sender, callback)
@@ -15,7 +15,6 @@ function onMessage(messageEvent, sender, callback)
         {
             callback(result);
         });
-        
     }
 }
 

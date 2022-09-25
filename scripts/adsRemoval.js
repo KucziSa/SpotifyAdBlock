@@ -32,7 +32,7 @@ async function initalize()
 }
 
 //
-// Hook the fetch() function
+// Hook the fetch() function.
 //
 window.fetch = function(url, init)
 {
@@ -50,13 +50,13 @@ window.fetch = function(url, init)
         deviceId = request.device.device_id;
     }
 
-    // make the original request
+    // Make the original request.
     var fetchResult = originalFetch.call(window, url, init);
     return fetchResult;
 };
 
 //
-// Hook the WebSocket channel
+// Hook the WebSocket channel.
 //
 wsHook.after = function(messageEvent, url) 
 {
@@ -65,34 +65,37 @@ wsHook.after = function(messageEvent, url)
         var data = JSON.parse(messageEvent.data);
         if (data.payloads == undefined) {resolve(messageEvent); return;}
 
-        var payload = data.payloads[0];
-        if (payload.type == "replace_state")
+        for (var i= 0; i < data.payloads.length; i++)
         {
-            var stateMachine = payload["state_machine"];
-            var stateRef = payload["state_ref"];
-            if (stateRef != null) 
+            var payload = data.payloads[i];
+            if (payload.type == "replace_state")
             {
-                var currentStateIndex = stateRef["state_index"];
-
-                payload["state_machine"] = await manipulateStateMachine(stateMachine, currentStateIndex, true);
-                data.payloads[0] = payload;
-
-                isWebScoketInterceptionWorking = true;
-            }
-
-            if (isSimulatingStateChnage) 
-            {
-                // block this notification from reaching the client, to prevent song chnage
-                return new MessageEvent(messageEvent.type, {data: "{}"});
-            }
-        }
-        else if (payload.cluster != undefined)
-        {
-            if (payload.update_reason == "DEVICE_STATE_CHANGED")
-            {
-                if (deviceId != payload.cluster.active_device_id)
+                var stateMachine = payload["state_machine"];
+                var stateRef = payload["state_ref"];
+                if (stateRef != null) 
                 {
-                    showMultiDeviceWarning();
+                    var currentStateIndex = stateRef["state_index"];
+    
+                    payload["state_machine"] = await manipulateStateMachine(stateMachine, currentStateIndex, true);
+                    data.payloads[i] = payload;
+    
+                    isWebScoketInterceptionWorking = true;
+                }
+    
+                if (isSimulatingStateChnage) 
+                {
+                    // Block this notification from reaching the client, to prevent song change.
+                    return new MessageEvent(messageEvent.type, {data: "{}"});
+                }
+            }
+            else if (payload.cluster != undefined)
+            {
+                if (payload.update_reason == "DEVICE_STATE_CHANGED")
+                {
+                    if (deviceId != payload.cluster.active_device_id)
+                    {
+                        showMultiDeviceWarning();
+                    }
                 }
             }
         }
@@ -159,45 +162,62 @@ async function manipulateStateMachine(stateMachine, startingStateIndex, isReplac
 
             stateMachineString += trackName + " => ";
 
-            if (trackURI.includes(":ad:") && state["disallow_seeking"] == true)
+            if (trackURI.includes(":ad:") && isAd(state) == true)
             {   
                 console.log("SpotifyAdRemover: Encountered ad in " + trackURI);
 
-                var nextState = getNextState(stateMachine, track, startingStateIndex);
-                if (nextState == null)
+                var nextState = getNextState(stateMachine, track, i);
+                if (isAd(nextState))
                 {
-                    // we can't really skip over this state becuase we don't know where to skip to.
-                    // Either we will be able to do so in the next states update, or we won't.
-                    // In case we won't let's request the next state and insert it, or, if this fails, at least shorten the ad.
+                    // We can't really skip over this state because we don't know where to skip to.
+                    // We will request even more states, or, if this fails, at least shorten the ad.
                     
                     try
                     {
-                        var futureStateMachine = await getStates(stateMachine["state_machine_id"], state["state_id"]);
-                        nextState = getNextState(futureStateMachine, track);
+                        var maxAttempts = 3;
+                        var j = 0;
+                        var futureStateMachine = stateMachine;
+                        do
+                        {
+                            var latestTrack = futureStateMachine["tracks"][nextState["track"]];
+                            futureStateMachine = await getStates(futureStateMachine["state_machine_id"], nextState["state_id"]);
+                            nextState = getNextState(futureStateMachine, latestTrack);
+
+                            j++;
+                        }
+                        while (isAd(nextState) && j < maxAttempts)
+                        
+                        if (isAd(nextState))
+                        {
+                            // print out debugging information
+                            console.error("could not find the next ad-free state. state machine was:");
+                            console.error(futureStateMachine);
+                        }
+
                         var nextStateId = nextState["state_id"];
 
-                        // fix the new state to be suitable for replacing in the currenet state machine
+                        // Fix the new state to be suitable for replacing in the currenet state machine.
                         nextState["state_id"] = stateId;
+                        nextState["transitions"] = {};
                         nextTrack = futureStateMachine["tracks"][nextState["track"]];
                         tracks.push(nextTrack);
                         nextState["track"] = tracks.length - 1;
                             
                         if (i == startingStateIndex && !isReplacingState) 
                         {
-                            // our new state is going to be played now, let's point the player at the future state machine
+                            // Our new state is going to be played now, let's point the player at the future state machine.
                             nextState["state_id"] = nextStateId;
                             stateMachine["state_machine_id"] = futureStateMachine["state_machine_id"];
 
                             console.log("SpotifyAdRemover: Removed ad at " + trackURI + ", more complex flow");
-
                         }
 
                     }
                     catch (exception)
                     {
-                        console.error(exception);
                         state = shortenedState(state, track);
-                        console.log("SpotifyAdRemover: Shortned ad at " + trackURI);
+                        console.log("SpotifyAdRemover: Shortned ad at " + trackURI + " due to exception:");
+                        console.error(exception);
                     }
 
                     removedAds = true;
@@ -205,20 +225,20 @@ async function manipulateStateMachine(stateMachine, startingStateIndex, isReplac
 
                 if (nextState != null) 
                 {
-                    // make this state equal to the next one 
+                    // Make this state equal to the next one.
                     state = nextState;
                     tamperedStatesIds.push(nextState["state_id"]);
 
                     removedAds = true;
                 }
 
-                // replace the current state
+                // Replace the current state.
                 states[i] = state;
             }
 
             if (i == startingStateIndex && !isReplacingState && tamperedStatesIds.includes(stateId)) 
             {
-                // our new ad-free state is going to be played now
+                // Our new ad-free state is going to be played now.
                 console.log("SpotifyAdRemover: Removed ad at " + trackURI);
                 onAdRemoved(trackURI);
             }
@@ -260,7 +280,7 @@ async function getStates(stateMachineId, startingStateId)
     if (resultJson["error"] && 
     resultJson["error"]["message"] == "The access token expired")
     {
-        // refresh the access token and try again
+        // Refresh the access token and try again.
         await initalize();
         result = await originalFetch.call(window, statesUrl,{method: 'PUT', headers: {'Authorization': "Bearer " + accessToken, 'Content-Type': 'application/json'}, body: JSON.stringify(body)});
         resultJson = await result.json();
@@ -291,6 +311,7 @@ function getNextState(stateMachine, sourceTrack, startingStateIndex = 2, exclude
 {
     var states = stateMachine["states"];
     var tracks = stateMachine["tracks"];
+    var previousState = null;
 
     var foundTrack = false;
     for (var state of statesGenerator(states, startingStateIndex, "advance"))
@@ -304,11 +325,19 @@ function getNextState(stateMachine, sourceTrack, startingStateIndex = 2, exclude
             return state;
         }
 
+        if (previousState == state)
+        {
+            console.error("Cyclic state machine detected.");
+            debugger;
+            return state;
+        }
+
         foundTrack = (track["metadata"]["uri"] == sourceTrack["metadata"]["uri"]);
+        previousState = state;
 
     }
 
-    return null;
+    return state;
 }
 
 function getPreviousState(stateMachine, sourceTrack, startingStateIndex = 2)
@@ -332,6 +361,11 @@ function getPreviousState(stateMachine, sourceTrack, startingStateIndex = 2)
     }
 
     return null;
+}
+
+function isAd(state)
+{
+    return state["disallow_seeking"];
 }
 
 //
@@ -430,8 +464,8 @@ function showMultiDeviceWarning()
     if (!didShowMultiDeviceWarning)
     {
         Swal.fire({
-            title: "Another device is playnig",
-            html: "Please note that Spotify Ads Remover can't control other over playing devices, so ads will not be removed unless audio will play from this tab.",
+            title: "Another device is playing",
+            html: "Please note that Spotify Ads Remover can't control over other playing devices, so ads will not be removed unless audio will play from this tab.",
             icon: "warning",
             width: 500,
             confirmButtonColor: "#DD6B55",
@@ -461,7 +495,7 @@ function startObserving()
            
                        if (addedNode.getAttribute("role") == "row")
                        {
-                           // song row added
+                           // Song row added.
                        }
        
                        if (addedNode.classList.contains("os-resize-observer"))
